@@ -1,37 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Selfie Poster</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Selfie Poster with Frame</title>
 <style>
-  body { text-align: center; font-family: Arial; margin: 20px; }
-  #poster { position: relative; width: 400px; height: 400px; margin: 20px auto; }
-  #user-photo { width: 100%; height: 100%; object-fit: cover; }
-  #frame { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+  body { font-family: Arial, sans-serif; text-align: center; background: #f0f0f0; margin: 20px; }
+  #poster { position: relative; width: 400px; height: 400px; margin: 20px auto; border-radius: 10px; overflow: hidden; }
+  canvas { width: 100%; height: auto; border-radius: 10px; }
+  input[type='file'] { margin-top: 20px; }
+  button { padding: 10px 15px; margin-top: 10px; border-radius: 8px; border: none; background: #16a34a; color: white; font-weight: bold; cursor: pointer; }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
 </head>
 <body>
-<h2>Upload your photo to fit in the frame</h2>
-<input type="file" id="upload" accept="image/*"><br><br>
+<h1>कामेश्वरसिंहदरभंगासंस्कृतविश्वविद्यालयः</h1>
+<p>Upload your selfie; it will automatically fit inside the frame</p>
+<input id="photoInput" type="file" accept="image/*" />
 <div id="poster">
-  <img id="user-photo" src="" alt="">
-  <img id="frame" src="frame.jpg" alt="Frame">
+  <canvas id="canvas"></canvas>
 </div>
+<button id="dlBtn" disabled>Download Poster</button>
 <script>
-  const upload = document.getElementById('upload');
-  const userPhoto = document.getElementById('user-photo');
+const photoInput = document.getElementById('photoInput');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const dlBtn = document.getElementById('dlBtn');
 
-  upload.addEventListener('change', function(event) {
-    const file = event.target.files[0];
-    if(file) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        userPhoto.src = e.target.result;
-      }
-      reader.readAsDataURL(file);
+const frameImg = new Image();
+frameImg.src = 'frame.jpg'; // fixed poster frame
+
+let userImg = new Image();
+
+// Define the photo box inside the frame (adjust as needed)
+const photoBox = { x: 100, y: 120, width: 200, height: 160 };
+
+function drawPoster() {
+  canvas.width = frameImg.naturalWidth;
+  canvas.height = frameImg.naturalHeight;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  if(userImg.src) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(photoBox.x, photoBox.y, photoBox.width, photoBox.height);
+    ctx.clip();
+    // Fit selfie into photo box (cover)
+    const boxRatio = photoBox.width / photoBox.height;
+    const imgRatio = userImg.naturalWidth / userImg.naturalHeight;
+    let sx=0, sy=0, sw=userImg.naturalWidth, sh=userImg.naturalHeight;
+    if(imgRatio > boxRatio){
+      sw = userImg.naturalHeight * boxRatio;
+      sx = (userImg.naturalWidth - sw)/2;
+    } else {
+      sh = userImg.naturalWidth / boxRatio;
+      sy = (userImg.naturalHeight - sh)/2;
     }
-  });
+    ctx.drawImage(userImg, sx, sy, sw, sh, photoBox.x, photoBox.y, photoBox.width, photoBox.height);
+    ctx.restore();
+  }
+
+  ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
+  dlBtn.disabled = false;
+}
+
+photoInput.addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    userImg.src = ev.target.result;
+    userImg.onload = ()=> drawPoster();
+  };
+  reader.readAsDataURL(file);
+});
+
+dlBtn.addEventListener('click', ()=>{
+  const link = document.createElement('a');
+  link.download = 'poster.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+
+// Ensure poster redraws when frame loads
+frameImg.onload = drawPoster;
 </script>
 </body>
 </html>
